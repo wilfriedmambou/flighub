@@ -52,17 +52,72 @@ export const TripConfirmation: React.FC<TripConfirmationProps> = ({
   const validateTrip = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
-    // Vérifier le type de voyage
+    // Vérifier le type de voyage (validation simplifiée pour la page de confirmation)
     if (searchParams.tripType === 'one-way' && selectedFlights.length !== 1) {
       errors.push('Un voyage aller simple doit avoir exactement 1 vol');
     }
 
-    if (searchParams.tripType === 'round-trip' && selectedFlights.length !== 2) {
-      errors.push('Un voyage aller-retour doit avoir exactement 2 vols');
-    }
+    // Suppression de la validation stricte pour aller-retour sur la page de confirmation
+    // La validation se fait uniquement sur le formulaire de départ
 
     if (searchParams.tripType === 'multi-city' && (selectedFlights.length < 2 || selectedFlights.length > 5)) {
       errors.push('Un voyage multi-villes doit avoir entre 2 et 5 vols');
+    }
+
+    // Validation spécifique : aucun vol ne doit avoir le même aéroport de départ et d'arrivée
+    selectedFlights.forEach((flight, index) => {
+      if (flight.departure_airport.iata_code === flight.arrival_airport.iata_code) {
+        errors.push(`Vol ${index + 1}: L'aéroport de départ (${flight.departure_airport.iata_code}) ne peut pas être identique à l'aéroport d'arrivée`);
+      }
+    });
+
+    // Validation spécifique pour multi-villes : vérifier que chaque vol appartient à un segment différent
+    if (searchParams.tripType === 'multi-city' && selectedFlights.length > 1) {
+      console.log('🔍 Validation multi-villes - Vols sélectionnés:', selectedFlights.map(f => ({
+        id: f.id,
+        flight_number: f.flight_number,
+        segmentIndex: f.segmentIndex,
+        route: `${f.departure_airport.iata_code} → ${f.arrival_airport.iata_code}`
+      })));
+      
+      const segmentIndexes = new Set<number>();
+      const duplicateSegments: number[] = [];
+      
+      selectedFlights.forEach((flight) => {
+        console.log(`✈️ Vol ${flight.flight_number}: segmentIndex = ${flight.segmentIndex}`);
+        if (flight.segmentIndex !== undefined) {
+          if (segmentIndexes.has(flight.segmentIndex)) {
+            duplicateSegments.push(flight.segmentIndex);
+            console.log(`❌ Segment dupliqué détecté: ${flight.segmentIndex}`);
+          } else {
+            segmentIndexes.add(flight.segmentIndex);
+            console.log(`✅ Nouveau segment ajouté: ${flight.segmentIndex}`);
+          }
+        } else {
+          console.log(`⚠️ Vol sans segmentIndex: ${flight.flight_number}`);
+        }
+      });
+      
+      if (duplicateSegments.length > 0) {
+        const uniqueDuplicates = [...new Set(duplicateSegments)];
+        console.log('🚫 Segments dupliqués trouvés:', uniqueDuplicates);
+        uniqueDuplicates.forEach(segmentIndex => {
+          errors.push(`Erreur: Plusieurs vols sélectionnés pour le segment ${segmentIndex + 1}. Chaque segment doit avoir exactement un vol.`);
+        });
+      } else {
+        console.log('✅ Aucun segment dupliqué trouvé');
+      }
+      
+      // Vérifier la continuité des segments
+      for (let i = 1; i < selectedFlights.length; i++) {
+        const prevFlight = selectedFlights[i - 1];
+        const currentFlight = selectedFlights[i];
+        
+        if (prevFlight.arrival_airport.iata_code !== currentFlight.departure_airport.iata_code) {
+          console.warn(`Segment ${i + 1}: Discontinuité détectée - ${prevFlight.arrival_airport.iata_code} → ${currentFlight.departure_airport.iata_code}`);
+          // Note: On ne bloque pas pour la continuité car l'auto-remplissage la gère
+        }
+      }
     }
 
     // Vérifier les dates
@@ -141,8 +196,28 @@ export const TripConfirmation: React.FC<TripConfirmationProps> = ({
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Vols sélectionnés</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {selectedFlights.length} vol{selectedFlights.length > 1 ? 's' : ''} • {searchParams.departureAirport} → {searchParams.arrivalAirport}
+            {selectedFlights.length} vol{selectedFlights.length > 1 ? 's' : ''}
+            {searchParams.tripType === 'multi-city' ? (
+              <span> • Voyage multi-villes</span>
+            ) : (
+              <span> • {searchParams.departureAirport} → {searchParams.arrivalAirport}</span>
+            )}
           </p>
+          
+          {/* Résumé de l'itinéraire pour multi-villes */}
+          {searchParams.tripType === 'multi-city' && selectedFlights.length > 0 && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">Itinéraire complet :</h4>
+              <div className="text-sm text-blue-800">
+                {selectedFlights.map((flight, index) => (
+                  <span key={flight.id}>
+                    {flight.departure_airport.iata_code} → {flight.arrival_airport.iata_code}
+                    {index < selectedFlights.length - 1 && ' → '}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="divide-y divide-gray-200">
@@ -155,7 +230,10 @@ export const TripConfirmation: React.FC<TripConfirmationProps> = ({
                       Vol {index + 1}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {searchParams.tripType === 'round-trip' && index === 0 ? 'Aller' : searchParams.tripType === 'round-trip' && index === 1 ? 'Retour' : `Étape ${index + 1}`}
+                      {searchParams.tripType === 'round-trip' && index === 0 ? 'Aller' : 
+                       searchParams.tripType === 'round-trip' && index === 1 ? 'Retour' : 
+                       searchParams.tripType === 'multi-city' ? `Segment ${index + 1}` : 
+                       `Étape ${index + 1}`}
                     </div>
                   </div>
                   <div className="text-center">

@@ -1,8 +1,13 @@
 import { useState, useCallback } from 'react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://52.90.108.95';
 
-// FlightSearchParams interface for flight search parameters
+export interface FlightSegment {
+  departureAirport: string;
+  arrivalAirport: string;
+  departureDate: string;
+}
+
 export interface FlightSearchParams {
   tripType: 'one-way' | 'round-trip' | 'multi-city';
   departureAirport: string;
@@ -11,6 +16,7 @@ export interface FlightSearchParams {
   returnDate?: string;
   airline?: string;
   passengers?: number;
+  segments?: FlightSegment[];
 }
 
 export interface Flight {
@@ -35,9 +41,19 @@ export interface Flight {
   price: string;
   departure_time: string;
   arrival_time: string;
+  // Propriétés ajoutées pour les voyages multi-villes
+  segmentIndex?: number;
+  segmentInfo?: FlightSegment;
 }
 
-export interface FlightSearchState {
+export interface SegmentResult {
+  segmentIndex: number;
+  segment: FlightSegment;
+  flights: Flight[];
+  total: number;
+}
+
+interface FlightSearchState {
   searchParams: FlightSearchParams | null;
   searchResults: Flight[];
   selectedFlights: Flight[];
@@ -51,6 +67,7 @@ export interface FlightSearchState {
   };
   sortBy: string;
   sortOrder: 'asc' | 'desc';
+  segmentResults: SegmentResult[] | null;
 }
 
 export const useFlightSearch = () => {
@@ -68,52 +85,110 @@ export const useFlightSearch = () => {
     },
     sortBy: 'departure_time',
     sortOrder: 'asc',
+    segmentResults: null,
   });
 
   const searchFlights = useCallback(async (params: FlightSearchParams, page = 1, perPage = state.pagination.perPage) => {
     setState(prev => ({ ...prev, loading: true, error: null, searchParams: params }));
 
     try {
-      const searchParams = new URLSearchParams({
-        departure_airport: params.departureAirport,
-        arrival_airport: params.arrivalAirport,
-        date: params.departureDate,
-        sort: state.sortBy,
-        order: state.sortOrder,
-        page: page.toString(),
-        per_page: perPage.toString(),
-      });
+      if (params.tripType === 'multi-city' && params.segments && params.segments.length > 0) {
+        const segmentPromises = params.segments.map(async (segment, index) => {
+          const searchParams = new URLSearchParams({
+            departure_airport: segment.departureAirport,
+            arrival_airport: segment.arrivalAirport,
+            date: segment.departureDate,
+            sort: state.sortBy,
+            order: state.sortOrder,
+            page: '1',
+            per_page: '10',
+          });
 
-      if (params.airline) {
-        searchParams.append('airline', params.airline);
-      }
+          if (params.airline) {
+            searchParams.append('airline', params.airline);
+          }
 
-      const response = await fetch(`${API_BASE_URL}/api/flights/search?${searchParams}`);
-      
-      if (!response.ok) {
-        throw new Error('Erreur lors de la recherche de vols');
-      }
+          const response = await fetch(`${API_BASE_URL}/api/flights/search?${searchParams}`);
+          
+          if (!response.ok) {
+            throw new Error(`Erreur lors de la recherche du segment ${index + 1}`);
+          }
 
-      const data = await response.json();
-      
-      if (data.success) {
+          const data = await response.json();
+          return {
+            segmentIndex: index,
+            segment: segment,
+            flights: data.success ? data.data.data : [],
+            total: data.success ? data.data.total : 0
+          };
+        });
+
+        const segmentResults = await Promise.all(segmentPromises);
+        const allFlights = segmentResults.flatMap(result => 
+          result.flights.map((flight: Flight) => ({
+            ...flight,
+            segmentIndex: result.segmentIndex,
+            segmentInfo: result.segment
+          }))
+        );
+
+        const totalFlights = segmentResults.reduce((sum, result) => sum + result.total, 0);
+
         setState(prev => ({
           ...prev,
-          searchResults: data.data.data,
+          searchResults: allFlights,
+          segmentResults: segmentResults,
           pagination: {
-            currentPage: data.data.current_page,
-            lastPage: data.data.last_page,
-            total: data.data.total,
-            perPage: data.data.per_page,
+            currentPage: 1,
+            lastPage: 1,
+            total: totalFlights,
+            perPage: allFlights.length,
           },
           loading: false,
         }));
       } else {
-        setState(prev => ({
-          ...prev,
-          error: data.message || 'Erreur lors de la recherche',
-          loading: false,
-        }));
+        const searchParams = new URLSearchParams({
+          departure_airport: params.departureAirport,
+          arrival_airport: params.arrivalAirport,
+          date: params.departureDate,
+          sort: state.sortBy,
+          order: state.sortOrder,
+          page: page.toString(),
+          per_page: perPage.toString(),
+        });
+
+        if (params.airline) {
+          searchParams.append('airline', params.airline);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/flights/search?${searchParams}`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la recherche de vols');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          setState(prev => ({
+            ...prev,
+            searchResults: data.data.data,
+            segmentResults: null,
+            pagination: {
+              currentPage: data.data.current_page,
+              lastPage: data.data.last_page,
+              total: data.data.total,
+              perPage: data.data.per_page,
+            },
+            loading: false,
+          }));
+        } else {
+          setState(prev => ({
+            ...prev,
+            error: data.message || 'Erreur lors de la recherche',
+            loading: false,
+          }));
+        }
       }
     } catch (err) {
       setState(prev => ({

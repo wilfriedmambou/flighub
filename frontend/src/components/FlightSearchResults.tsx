@@ -2,7 +2,7 @@ import React from 'react';
 import { Plane, Clock, MapPin, Building2, CheckCircle } from 'lucide-react';
 import { Pagination } from './Pagination';
 import { FlightSorting } from './FlightSorting';
-import type { Flight } from '../hooks';
+import type { Flight, SegmentResult } from '../hooks';
 
 interface FlightSearchResultsProps {
   flights: Flight[];
@@ -17,11 +17,18 @@ interface FlightSearchResultsProps {
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   selectedFlights: Flight[];
+  segmentResults: SegmentResult[] | null;
   searchParams: {
+    tripType: 'one-way' | 'round-trip' | 'multi-city';
     departureAirport: string;
     arrivalAirport: string;
     date: string;
     airline?: string;
+    segments?: Array<{
+      departureAirport: string;
+      arrivalAirport: string;
+      departureDate: string;
+    }>;
   };
   onFlightSelect: (flight: Flight) => void;
   onSortChange: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
@@ -38,6 +45,7 @@ export const FlightSearchResults: React.FC<FlightSearchResultsProps> = ({
   sortBy,
   sortOrder,
   selectedFlights,
+  segmentResults,
   searchParams,
   onFlightSelect,
   onSortChange,
@@ -101,12 +109,41 @@ export const FlightSearchResults: React.FC<FlightSearchResultsProps> = ({
           Résultats de recherche
         </h2>
         <p className="text-gray-600">
-          {searchParams.departureAirport} → {searchParams.arrivalAirport} • {formatDate(searchParams.date)}
+          {searchParams.tripType === 'multi-city' && searchParams.segments ? (
+            <>
+              {searchParams.segments[0]?.departureAirport} → {searchParams.segments[0]?.arrivalAirport} • {formatDate(searchParams.segments[0]?.departureDate)}
+              {searchParams.segments.length > 1 && (
+                <span className="text-blue-600"> (+ {searchParams.segments.length - 1} autre{searchParams.segments.length > 2 ? 's' : ''})</span>
+              )}
+            </>
+          ) : (
+            <>
+              {searchParams.departureAirport} → {searchParams.arrivalAirport} • {formatDate(searchParams.date)}
+            </>
+          )}
         </p>
         {pagination.total > 0 && (
           <p className="text-sm text-gray-500 mt-1">
             {pagination.total} vol{pagination.total > 1 ? 's' : ''} trouvé{pagination.total > 1 ? 's' : ''}
           </p>
+        )}
+        
+        {/* Affichage spécial pour les voyages multi-villes */}
+        {searchParams.tripType === 'multi-city' && searchParams.segments && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-medium text-blue-900 mb-2">Voyage multi-villes</h3>
+            <div className="text-sm text-blue-800">
+              <p className="mb-2">
+                <strong>Segment 1 :</strong> {searchParams.segments[0]?.departureAirport} → {searchParams.segments[0]?.arrivalAirport} 
+                ({new Date(searchParams.segments[0]?.departureDate).toLocaleDateString('fr-FR')})
+              </p>
+              {searchParams.segments.length > 1 && (
+                <p className="text-blue-600">
+                  + {searchParams.segments.length - 1} autre{searchParams.segments.length > 2 ? 's' : ''} segment{searchParams.segments.length > 2 ? 's' : ''} à configurer
+                </p>
+              )}
+            </div>
+          </div>
         )}
         
         {/* Résumé de la sélection */}
@@ -140,7 +177,130 @@ export const FlightSearchResults: React.FC<FlightSearchResultsProps> = ({
       />
 
       {/* Liste des vols */}
-      {flights.length > 0 ? (
+      {searchParams.tripType === 'multi-city' && segmentResults ? (
+        // Affichage par segment pour les voyages multi-villes
+        <div className="space-y-6">
+          {segmentResults.map((segmentResult) => (
+            <div key={segmentResult.segmentIndex} className="bg-gray-50 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Segment {segmentResult.segmentIndex + 1}: {segmentResult.segment.departureAirport} → {segmentResult.segment.arrivalAirport}
+                <span className="text-sm text-gray-500 ml-2">
+                  ({new Date(segmentResult.segment.departureDate).toLocaleDateString('fr-FR')})
+                </span>
+              </h3>
+              
+              {segmentResult.flights.length > 0 ? (
+                <div className="space-y-4">
+                  {segmentResult.flights.map((flight) => (
+                    <div
+                      key={`${segmentResult.segmentIndex}-${flight.id}`}
+                      className={`bg-white p-6 rounded-lg shadow-sm border transition-all ${
+                        isFlightSelected(flight)
+                          ? 'ring-2 ring-blue-500 border-blue-300'
+                          : 'hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        {/* Informations principales */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-5 h-5 text-blue-600" />
+                              <span className="font-semibold text-lg">{flight.airline.name}</span>
+                              <span className="text-gray-500">({flight.airline.iata_code})</span>
+                            </div>
+                            <span className="text-xl font-bold text-blue-600">
+                              Vol {flight.flight_number}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Horaires */}
+                            <div className="flex items-center gap-4">
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {formatTime(flight.departure_time)}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {flight.departure_airport.iata_code}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {flight.departure_airport.city}
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 text-center">
+                                <Plane className="w-5 h-5 text-gray-400 mx-auto mb-1" />
+                                <div className="text-sm text-gray-600">
+                                  {calculateDuration(flight.departure_time, flight.arrival_time)}
+                                </div>
+                              </div>
+                              
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {formatTime(flight.arrival_time)}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {flight.arrival_airport.iata_code}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {flight.arrival_airport.city}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Prix */}
+                            <div className="text-center md:text-right">
+                              <div className="text-3xl font-bold text-green-600">
+                                {parseFloat(flight.price).toFixed(2)} €
+                              </div>
+                              <div className="text-sm text-gray-500">par personne</div>
+                            </div>
+
+                            {/* Bouton de sélection */}
+                            <div className="text-center md:text-right">
+                              <button
+                                onClick={() => {
+                                  // S'assurer que le vol a les bonnes propriétés de segment
+                                  const flightWithSegment = {
+                                    ...flight,
+                                    segmentIndex: segmentResult.segmentIndex,
+                                    segmentInfo: segmentResult.segment
+                                  };
+                                  onFlightSelect(flightWithSegment);
+                                }}
+                                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                                  isFlightSelected(flight)
+                                    ? 'bg-green-100 text-green-800 border border-green-300'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                              >
+                                {isFlightSelected(flight) ? (
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Sélectionné
+                                  </div>
+                                ) : (
+                                  'Sélectionner'
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Aucun vol trouvé pour ce segment
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : flights.length > 0 ? (
+        // Affichage standard pour one-way et round-trip
         <div className="space-y-4">
           {flights.map((flight) => (
             <div

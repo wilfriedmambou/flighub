@@ -7,6 +7,7 @@ export { AirportSelect } from './AirportSelect'
 export { AirlineSelect } from './AirlineSelect'
 export { Pagination } from './Pagination'
 export { FlightSorting } from './FlightSorting'
+export { MultiCityForm } from './MultiCityForm'
 
 
 

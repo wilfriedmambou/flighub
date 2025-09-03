@@ -13,6 +13,7 @@ export const FlightSearchPage: React.FC = () => {
     searchParams,
     searchResults,
     selectedFlights,
+    segmentResults,
     loading,
     error,
     pagination,
@@ -100,11 +101,14 @@ export const FlightSearchPage: React.FC = () => {
               sortBy={sortBy}
               sortOrder={sortOrder}
               selectedFlights={selectedFlights}
+              segmentResults={segmentResults}
               searchParams={{
+                tripType: searchParams?.tripType || 'one-way',
                 departureAirport: searchParams?.departureAirport || '',
                 arrivalAirport: searchParams?.arrivalAirport || '',
                 date: searchParams?.departureDate || '',
                 airline: searchParams?.airline,
+                segments: searchParams?.segments,
               }}
               onFlightSelect={handleFlightSelect}
               onSortChange={setSorting}

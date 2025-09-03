@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import type { FlightSegment } from './useFlightSearch'
 
 export interface ValidationError {
   field: string
@@ -181,14 +182,27 @@ export const useFlightSearchValidation = () => {
   const validateForm = useCallback((formData: any, tripType: string): ValidationError[] => {
     const newErrors: ValidationError[] = []
 
-    // Validation de chaque champ
-    Object.keys(validationRules).forEach(field => {
-      const value = formData[field]
-      const error = validateField(field, value, tripType)
-      if (error) {
-        newErrors.push(error)
-      }
-    })
+    // Pour les voyages multi-villes, on ne valide que les champs communs (airline, passengers)
+    if (tripType === 'multi-city') {
+      // Validation uniquement des champs communs
+      const commonFields = ['airline', 'passengers']
+      commonFields.forEach(field => {
+        const value = formData[field]
+        const error = validateField(field, value, tripType)
+        if (error) {
+          newErrors.push(error)
+        }
+      })
+    } else {
+      // Validation de tous les champs pour one-way et round-trip
+      Object.keys(validationRules).forEach(field => {
+        const value = formData[field]
+        const error = validateField(field, value, tripType)
+        if (error) {
+          newErrors.push(error)
+        }
+      })
+    }
 
     // Validation spécifique au type de voyage
     if (tripType === 'round-trip' && formData.returnDate) {
@@ -203,8 +217,8 @@ export const useFlightSearchValidation = () => {
       }
     }
 
-    // Validation aéroports différents
-    if (formData.departureAirport && formData.arrivalAirport) {
+    // Validation aéroports différents (seulement pour one-way et round-trip)
+    if (tripType !== 'multi-city' && formData.departureAirport && formData.arrivalAirport) {
       if (formData.departureAirport === formData.arrivalAirport) {
         newErrors.push({
           field: 'arrivalAirport',
@@ -213,16 +227,7 @@ export const useFlightSearchValidation = () => {
       }
     }
 
-    // Validation multi-city (si implémenté)
-    if (tripType === 'multi-city') {
-      // Logique spécifique pour multi-city
-      if (!formData.returnDate) {
-        newErrors.push({
-          field: 'returnDate',
-          message: 'La date de retour est requise pour les voyages multi-villes'
-        })
-      }
-    }
+    // Validation multi-city sera gérée par validateMultiCitySegments
 
     setErrors(newErrors)
     return newErrors
@@ -249,6 +254,106 @@ export const useFlightSearchValidation = () => {
     setErrors(prev => prev.filter(error => error.field !== field))
   }, [])
 
+  // Validation spécifique pour les voyages multi-villes
+  const validateMultiCitySegments = useCallback((segments: FlightSegment[]): ValidationError[] => {
+    const errors: ValidationError[] = []
+
+    if (!segments || segments.length < 2) {
+      errors.push({
+        field: 'segments',
+        message: 'Un voyage multi-villes doit avoir au moins 2 segments'
+      })
+      return errors
+    }
+
+    if (segments.length > 5) {
+      errors.push({
+        field: 'segments',
+        message: 'Un voyage multi-villes ne peut pas avoir plus de 5 segments'
+      })
+    }
+
+    segments.forEach((segment, index) => {
+      // Validation aéroport de départ
+      if (!segment.departureAirport) {
+        errors.push({
+          field: `segment_${index}_departure`,
+          message: `L'aéroport de départ du segment ${index + 1} est requis`
+        })
+      } else if (!/^[A-Z]{3}$/.test(segment.departureAirport)) {
+        errors.push({
+          field: `segment_${index}_departure`,
+          message: `L'aéroport de départ du segment ${index + 1} doit être un code IATA valide`
+        })
+      }
+
+      // Validation aéroport d'arrivée
+      if (!segment.arrivalAirport) {
+        errors.push({
+          field: `segment_${index}_arrival`,
+          message: `L'aéroport d'arrivée du segment ${index + 1} est requis`
+        })
+      } else if (!/^[A-Z]{3}$/.test(segment.arrivalAirport)) {
+        errors.push({
+          field: `segment_${index}_arrival`,
+          message: `L'aéroport d'arrivée du segment ${index + 1} doit être un code IATA valide`
+        })
+      }
+
+      // Validation que départ ≠ arrivée
+      if (segment.departureAirport && segment.arrivalAirport && 
+          segment.departureAirport === segment.arrivalAirport) {
+        errors.push({
+          field: `segment_${index}_airports`,
+          message: `L'aéroport de départ et d'arrivée du segment ${index + 1} ne peuvent pas être identiques`
+        })
+      }
+
+      // Validation date
+      if (!segment.departureDate) {
+        errors.push({
+          field: `segment_${index}_date`,
+          message: `La date de départ du segment ${index + 1} est requise`
+        })
+      } else {
+        const segmentDate = new Date(segment.departureDate)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        if (segmentDate < today) {
+          errors.push({
+            field: `segment_${index}_date`,
+            message: `La date de départ du segment ${index + 1} doit être dans le futur`
+          })
+        }
+
+        // Validation que la date est après le segment précédent
+        if (index > 0) {
+          const prevSegmentDate = new Date(segments[index - 1].departureDate)
+          if (segmentDate <= prevSegmentDate) {
+            errors.push({
+              field: `segment_${index}_date`,
+              message: `La date du segment ${index + 1} doit être après celle du segment ${index}`
+            })
+          }
+        }
+      }
+    })
+
+    // Validation de la continuité des aéroports (plus permissive avec auto-remplissage)
+    for (let i = 1; i < segments.length; i++) {
+      // Seulement si l'utilisateur a manuellement modifié l'aéroport de départ
+      // et qu'il ne correspond pas à l'arrivée du segment précédent
+      if (segments[i].departureAirport && segments[i-1].arrivalAirport &&
+          segments[i].departureAirport !== segments[i-1].arrivalAirport) {
+        // Avertissement plutôt qu'erreur bloquante
+        console.warn(`Segment ${i + 1}: L'aéroport de départ (${segments[i].departureAirport}) ne correspond pas à l'arrivée du segment précédent (${segments[i-1].arrivalAirport})`);
+      }
+    }
+
+    return errors
+  }, [])
+
   return {
     errors,
     validateField,
@@ -257,6 +362,7 @@ export const useFlightSearchValidation = () => {
     getErrorMessage,
     clearErrors,
     clearFieldError,
+    validateMultiCitySegments,
     validationRules
   }
 }

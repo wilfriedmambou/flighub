@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Plane, Calendar, ArrowLeftRight } from 'lucide-react'
-import type { FlightSearchParams } from '../hooks'
+import type { FlightSearchParams, FlightSegment } from '../hooks'
 import { useFlightSearchValidation } from '../hooks'
 import { ValidationError } from './ValidationError'
 import { ValidationSummary } from './ValidationSummary'
 import { AirportSelect } from './AirportSelect'
 import { AirlineSelect } from './AirlineSelect'
+import { MultiCityForm } from './MultiCityForm'
 
 interface FlightSearchFormProps {
   onSubmit: (data: FlightSearchParams) => void
@@ -22,7 +23,8 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
     departureDate: '',
     returnDate: '',
     airline: '',
-    passengers: 1
+    passengers: 1,
+    segments: []
   })
 
   // Hook de validation
@@ -33,7 +35,8 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
     hasError,
     getErrorMessage,
     clearErrors,
-    clearFieldError
+    clearFieldError,
+    validateMultiCitySegments
   } = useFlightSearchValidation()
 
   // Validation spéciale pour la date de retour
@@ -76,11 +79,35 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
 
   const handleTripTypeChange = (type: 'one-way' | 'round-trip' | 'multi-city') => {
     setTripType(type)
-    setFormData(prev => ({
-      ...prev,
-      tripType: type,
-      returnDate: type === 'one-way' ? undefined : prev.returnDate
-    }))
+    
+    if (type === 'multi-city') {
+      // Initialiser avec 2 segments pour multi-villes
+      const initialSegments: FlightSegment[] = [
+        {
+          departureAirport: formData.departureAirport,
+          arrivalAirport: formData.arrivalAirport,
+          departureDate: formData.departureDate
+        },
+        {
+          departureAirport: formData.arrivalAirport,
+          arrivalAirport: '',
+          departureDate: formData.returnDate || formData.departureDate
+        }
+      ]
+      
+      setFormData(prev => ({
+        ...prev,
+        tripType: type,
+        segments: initialSegments
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        tripType: type,
+        returnDate: type === 'one-way' ? undefined : prev.returnDate,
+        segments: undefined
+      }))
+    }
     
     // Effacer les erreurs liées au type de voyage
     clearErrors()
@@ -98,7 +125,13 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
     e.preventDefault()
     
     // Validation complète du formulaire
-    const validationErrors = validateForm(formData, tripType)
+    let validationErrors = validateForm(formData, tripType)
+    
+    // Validation spécifique pour les voyages multi-villes
+    if (tripType === 'multi-city' && formData.segments) {
+      const multiCityErrors = validateMultiCitySegments(formData.segments)
+      validationErrors = [...validationErrors, ...multiCityErrors]
+    }
     
     if (validationErrors.length === 0) {
       onSubmit(formData)
@@ -153,7 +186,19 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Multi-city form */}
+        {tripType === 'multi-city' && formData.segments && (
+          <MultiCityForm
+            segments={formData.segments}
+            onSegmentsChange={(segments) => setFormData(prev => ({ ...prev, segments }))}
+            errors={errors.filter(error => error.message.includes('segment') || error.message.includes('multi-villes')).map(error => error.message)}
+            onClearErrors={clearErrors}
+          />
+        )}
+
+        {/* Standard form fields (hidden for multi-city) */}
+        {tripType !== 'multi-city' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* From Airport */}
           <AirportSelect
             value={formData.departureAirport}
@@ -235,6 +280,11 @@ export const FlightSearchForm: React.FC<FlightSearchFormProps> = ({ onSubmit, on
             <ValidationError message={getReturnDateErrorMessage()} />
           </div>
 
+          </div>
+        )}
+
+        {/* Common fields for all trip types */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Airline Filter */}
           <AirlineSelect
             value={formData.airline || ''}

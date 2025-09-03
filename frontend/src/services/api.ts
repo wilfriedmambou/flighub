@@ -1,7 +1,7 @@
 // Configuration de l'API
-import { buildApiUrl } from '../config/environment';
+import { config } from '../config/environment';
 
-const API_BASE_URL = buildApiUrl('/api');
+const API_BASE_URL = `${config.API_BASE_URL}/api`;
 
 // Types pour les réponses API
 interface ApiResponse<T> {
