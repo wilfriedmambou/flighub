@@ -1,0 +1,1228 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "FlightHub API Documentation",
+        "description": "API pour la recherche et la réservation de vols",
+        "contact": {
+            "name": "FlightHub Support",
+            "email": "support@flighthub.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api",
+            "description": "Serveur de développement local"
+        }
+    ],
+    "paths": {
+        "/airlines": {
+            "get": {
+                "tags": [
+                    "Airlines"
+                ],
+                "summary": "Récupérer la liste des compagnies aériennes",
+                "description": "Retourne la liste complète des compagnies aériennes disponibles",
+                "operationId": "getAirlines",
+                "responses": {
+                    "200": {
+                        "description": "Liste des compagnies aériennes récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Airline"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Airlines retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/airlines/{airline}": {
+            "get": {
+                "tags": [
+                    "Airlines"
+                ],
+                "summary": "Récupérer une compagnie aérienne spécifique",
+                "description": "Retourne les détails d'une compagnie aérienne par son ID",
+                "operationId": "getAirline",
+                "parameters": [
+                    {
+                        "name": "airline",
+                        "in": "path",
+                        "description": "ID de la compagnie aérienne",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compagnie aérienne récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Airline"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Airline retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compagnie aérienne non trouvée"
+                    }
+                }
+            }
+        },
+        "/airports": {
+            "get": {
+                "tags": [
+                    "Airports"
+                ],
+                "summary": "Récupérer la liste des aéroports",
+                "description": "Retourne la liste des aéroports avec filtres optionnels",
+                "operationId": "getAirports",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "description": "Filtrer par ville",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "city_code",
+                        "in": "query",
+                        "description": "Filtrer par code de ville",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des aéroports récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Airport"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Airports retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/airports/{airport}": {
+            "get": {
+                "tags": [
+                    "Airports"
+                ],
+                "summary": "Récupérer un aéroport spécifique",
+                "description": "Retourne les détails d'un aéroport par son ID",
+                "operationId": "getAirport",
+                "parameters": [
+                    {
+                        "name": "airport",
+                        "in": "path",
+                        "description": "ID de l'aéroport",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Aéroport récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Airport"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Airport retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/airports/search": {
+            "get": {
+                "tags": [
+                    "Airports"
+                ],
+                "summary": "Rechercher des aéroports",
+                "description": "Recherche des aéroports par nom, code IATA ou ville",
+                "operationId": "searchAirports",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Terme de recherche",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Aéroports trouvés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Airport"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Airports found successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Requête invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Search query is required"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/flights": {
+            "get": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Récupérer la liste des vols",
+                "description": "Retourne la liste des vols avec filtres et pagination",
+                "operationId": "getFlights",
+                "parameters": [
+                    {
+                        "name": "departure_airport",
+                        "in": "query",
+                        "description": "Filtrer par aéroport de départ (code IATA)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "arrival_airport",
+                        "in": "query",
+                        "description": "Filtrer par aéroport d'arrivée (code IATA)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Filtrer par date de départ",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "airline",
+                        "in": "query",
+                        "description": "Filtrer par compagnie aérienne (code IATA)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Champ de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "departure_time"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "description": "Ordre de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "asc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des vols récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Flights retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/flights/{flight}": {
+            "get": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Récupérer un vol spécifique",
+                "description": "Retourne les détails d'un vol par son ID",
+                "operationId": "getFlight",
+                "parameters": [
+                    {
+                        "name": "flight",
+                        "in": "path",
+                        "description": "ID du vol",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Vol récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Flight"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Flight retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/flights/search": {
+            "get": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Rechercher des vols",
+                "description": "Recherche avancée de vols avec validation et pagination",
+                "operationId": "searchFlights",
+                "parameters": [
+                    {
+                        "name": "departure_airport",
+                        "in": "query",
+                        "description": "Aéroport de départ (code IATA)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "arrival_airport",
+                        "in": "query",
+                        "description": "Aéroport d'arrivée (code IATA)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Date de départ",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "airline",
+                        "in": "query",
+                        "description": "Compagnie aérienne (code IATA)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 3
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Champ de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "departure_time"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "description": "Ordre de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "asc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Numéro de page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Vols trouvés avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Flights found successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Données de validation invalides",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/trips": {
+            "get": {
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Récupérer la liste des voyages",
+                "description": "Retourne la liste des voyages avec tri et pagination",
+                "operationId": "getTrips",
+                "parameters": [
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Champ de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "description": "Ordre de tri",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des voyages récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PaginatedResponse"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trips retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Créer un nouveau voyage",
+                "description": "Crée un nouveau voyage avec les vols sélectionnés",
+                "operationId": "createTrip",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "trip_type": {
+                                        "description": "Type de voyage",
+                                        "type": "string",
+                                        "enum": [
+                                            "one-way",
+                                            "round-trip",
+                                            "multi-city"
+                                        ],
+                                        "example": "one-way"
+                                    },
+                                    "flights": {
+                                        "description": "IDs des vols",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2
+                                        ]
+                                    },
+                                    "departure_date": {
+                                        "description": "Date de départ",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-15"
+                                    },
+                                    "return_date": {
+                                        "description": "Date de retour (optionnel)",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-20"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Voyage créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Trip"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trip created successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Données de validation invalides",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/{trip}": {
+            "get": {
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Récupérer un voyage spécifique",
+                "description": "Retourne les détails d'un voyage par son ID",
+                "operationId": "getTrip",
+                "parameters": [
+                    {
+                        "name": "trip",
+                        "in": "path",
+                        "description": "ID du voyage",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Voyage récupéré avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Trip"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trip retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/trips/validate": {
+            "post": {
+                "tags": [
+                    "Trips"
+                ],
+                "summary": "Valider un voyage",
+                "description": "Valide les contraintes d'un voyage avant création",
+                "operationId": "validateTrip",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "trip_type": {
+                                        "description": "Type de voyage",
+                                        "type": "string",
+                                        "enum": [
+                                            "one-way",
+                                            "round-trip",
+                                            "multi-city"
+                                        ],
+                                        "example": "one-way"
+                                    },
+                                    "flights": {
+                                        "description": "IDs des vols",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2
+                                        ]
+                                    },
+                                    "departure_date": {
+                                        "description": "Date de départ",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-15"
+                                    },
+                                    "return_date": {
+                                        "description": "Date de retour (optionnel)",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-20"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Voyage validé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "valid": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trip is valid"
+                                        },
+                                        "total_price": {
+                                            "description": "Prix total du voyage",
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 599.98
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Voyage invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "valid": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Trip validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "PaginatedResponse": {
+                "title": "Réponse Paginée",
+                "description": "Structure de réponse paginée",
+                "properties": {
+                    "current_page": {
+                        "description": "Page actuelle",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "data": {
+                        "description": "Données de la page",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "first_page_url": {
+                        "description": "URL de la première page",
+                        "type": "string",
+                        "example": "http://localhost:8000/api/flights?page=1"
+                    },
+                    "from": {
+                        "description": "Premier élément de la page",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "last_page": {
+                        "description": "Dernière page",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "last_page_url": {
+                        "description": "URL de la dernière page",
+                        "type": "string",
+                        "example": "http://localhost:8000/api/flights?page=5"
+                    },
+                    "next_page_url": {
+                        "description": "URL de la page suivante",
+                        "type": "string",
+                        "example": "http://localhost:8000/api/flights?page=2"
+                    },
+                    "path": {
+                        "description": "URL de base",
+                        "type": "string",
+                        "example": "http://localhost:8000/api/flights"
+                    },
+                    "per_page": {
+                        "description": "Éléments par page",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "prev_page_url": {
+                        "description": "URL de la page précédente",
+                        "type": "string",
+                        "example": null
+                    },
+                    "to": {
+                        "description": "Dernier élément de la page",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "total": {
+                        "description": "Nombre total d'éléments",
+                        "type": "integer",
+                        "example": 50
+                    }
+                },
+                "type": "object"
+            },
+            "Airline": {
+                "title": "Compagnie Aérienne",
+                "description": "Modèle représentant une compagnie aérienne",
+                "properties": {
+                    "id": {
+                        "description": "ID unique de la compagnie",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nom de la compagnie",
+                        "type": "string",
+                        "example": "Air Canada"
+                    },
+                    "iata_code": {
+                        "description": "Code IATA de la compagnie",
+                        "type": "string",
+                        "example": "AC"
+                    },
+                    "created_at": {
+                        "description": "Date de création",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Date de mise à jour",
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Airport": {
+                "title": "Aéroport",
+                "description": "Modèle représentant un aéroport",
+                "properties": {
+                    "id": {
+                        "description": "ID unique de l'aéroport",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "description": "Nom de l'aéroport",
+                        "type": "string",
+                        "example": "Montréal-Trudeau International Airport"
+                    },
+                    "iata_code": {
+                        "description": "Code IATA de l'aéroport",
+                        "type": "string",
+                        "example": "YUL"
+                    },
+                    "city": {
+                        "description": "Ville de l'aéroport",
+                        "type": "string",
+                        "example": "Montréal"
+                    },
+                    "latitude": {
+                        "description": "Latitude de l'aéroport",
+                        "type": "number",
+                        "format": "float",
+                        "example": 45.4706
+                    },
+                    "longitude": {
+                        "description": "Longitude de l'aéroport",
+                        "type": "number",
+                        "format": "float",
+                        "example": -73.7408
+                    },
+                    "timezone": {
+                        "description": "Fuseau horaire de l'aéroport",
+                        "type": "string",
+                        "example": "America/Montreal"
+                    },
+                    "city_code": {
+                        "description": "Code de la ville",
+                        "type": "string",
+                        "example": "YMQ"
+                    },
+                    "created_at": {
+                        "description": "Date de création",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Date de mise à jour",
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Flight": {
+                "title": "Vol",
+                "description": "Modèle représentant un vol",
+                "properties": {
+                    "id": {
+                        "description": "ID unique du vol",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "flight_number": {
+                        "description": "Numéro de vol",
+                        "type": "string",
+                        "example": "AC123"
+                    },
+                    "airline_id": {
+                        "description": "ID de la compagnie aérienne",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "departure_airport_id": {
+                        "description": "ID de l'aéroport de départ",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "arrival_airport_id": {
+                        "description": "ID de l'aéroport d'arrivée",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "price": {
+                        "description": "Prix du vol",
+                        "type": "number",
+                        "format": "float",
+                        "example": 299.99
+                    },
+                    "departure_time": {
+                        "description": "Heure de départ",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T10:30:00Z"
+                    },
+                    "arrival_time": {
+                        "description": "Heure d'arrivée",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T12:45:00Z"
+                    },
+                    "airline": {
+                        "$ref": "#/components/schemas/Airline"
+                    },
+                    "departure_airport": {
+                        "$ref": "#/components/schemas/Airport"
+                    },
+                    "arrival_airport": {
+                        "$ref": "#/components/schemas/Airport"
+                    },
+                    "created_at": {
+                        "description": "Date de création",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Date de mise à jour",
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Trip": {
+                "title": "Voyage",
+                "description": "Modèle représentant un voyage",
+                "properties": {
+                    "id": {
+                        "description": "ID unique du voyage",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "trip_type": {
+                        "description": "Type de voyage",
+                        "type": "string",
+                        "enum": [
+                            "one-way",
+                            "round-trip",
+                            "multi-city"
+                        ],
+                        "example": "one-way"
+                    },
+                    "total_price": {
+                        "description": "Prix total du voyage",
+                        "type": "number",
+                        "format": "float",
+                        "example": 599.98
+                    },
+                    "departure_date": {
+                        "description": "Date de départ",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2024-01-15"
+                    },
+                    "return_date": {
+                        "description": "Date de retour (optionnel)",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2024-01-20"
+                    },
+                    "flights": {
+                        "description": "Vols du voyage",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Flight"
+                        }
+                    },
+                    "created_at": {
+                        "description": "Date de création",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Date de mise à jour",
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Airlines",
+            "description": "Gestion des compagnies aériennes"
+        },
+        {
+            "name": "Airports",
+            "description": "Gestion des aéroports"
+        },
+        {
+            "name": "Flights",
+            "description": "Recherche et gestion des vols"
+        },
+        {
+            "name": "Trips",
+            "description": "Gestion des voyages"
+        }
+    ]
+}

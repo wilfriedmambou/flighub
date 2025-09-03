@@ -1,0 +1,69 @@
+services:
+  # Backend Laravel
+  backend:
+    image: flighthub-backend:test
+    container_name: flighthub-backend-test
+    ports:
+      - "8000:80"
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=prod-flighthub-db.cgrc2wska579.us-east-1.rds.amazonaws.com
+      - DB_PORT=5432
+      - DB_DATABASE=flighthub
+      - DB_USERNAME=flighthub_admin
+      - DB_PASSWORD=flighthub-prod-2025
+      - APP_ENV=testing
+      - APP_DEBUG=true
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - flighthub-network
+    depends_on:
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React
+  frontend:
+    image: flighthub-frontend:test
+    container_name: flighthub-frontend-test
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - flighthub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Service de test RDS
+  test-rds:
+    image: flighthub-backend:test
+    container_name: flighthub-test-rds
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=prod-flighthub-db.cgrc2wska579.us-east-1.rds.amazonaws.com
+      - DB_PORT=5432
+      - DB_DATABASE=flighthub
+      - DB_USERNAME=flighthub_admin
+      - DB_PASSWORD=flighthub-prod-2025
+    networks:
+      - flighthub-network
+    command: php test-rds-connection.php
+    depends_on:
+      - backend
+
+networks:
+  flighthub-network:
+    driver: bridge
+
+volumes:
+  backend-storage:
