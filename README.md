@@ -38,38 +38,79 @@ flightHub/
 
 ### **Prerequisites**
 - Docker and Docker Compose installed on your system
-- AWS CLI configured (for ECR access)
-- Environment variables configured (see below)
+- Internet connection (for RDS database access)
+- No additional configuration needed (RDS connection is pre-configured)
+
+### **Database Information**
+
+The application connects to a **pre-configured AWS RDS PostgreSQL database**:
+
+- **Database Name:** `flighthub`
+- **Host:** `prod-flighthub-db.cgrc2wska579.us-east-1.rds.amazonaws.com`
+- **Port:** `5432`
+- **Username:** `flighthub_admin`
+- **Password:** `flighthub-prod-2025`
+- **Region:** `us-east-1`
+
+**Note:** The database is already populated with flight data and ready for testing.
 
 ### **Quick Start**
 
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/wilfriedmambou/flighub.git
-   cd flighub
+   cd flighthub
    ```
 
-2. **Configure environment variables:**
-   Create a `.env` file in the root directory with the following variables:
-   ```bash
-   # Database password for RDS connection
-   DB_PASSWORD=your_rds_password_here
-   
-   # AWS credentials (if needed for ECR)
-   AWS_ACCESS_KEY_ID=your_access_key
-   AWS_SECRET_ACCESS_KEY=your_secret_key
-   AWS_DEFAULT_REGION=us-east-1
-   ```
-
-3. **Start the application:**
+2. **Start the application:**
    ```bash
    docker compose up --build -d
    ```
 
-4. **Access the application:**
+3. **Access the application:**
    - **Frontend:** http://localhost:3000
    - **Backend API:** http://localhost:8000
    - **API Health Check:** http://localhost:8000/api/health
+
+### **Step-by-Step Installation**
+
+#### **Step 1: Backend Setup**
+The backend service will:
+- Connect to the RDS database automatically
+- Run database migrations
+- Start the Laravel API server
+- Be available on port 8000
+
+```bash
+# Check backend logs
+docker logs flighthub-backend-test
+
+# Test backend health
+curl http://localhost:8000/api/health
+```
+
+#### **Step 2: Frontend Setup**
+The frontend service will:
+- Build the React application
+- Connect to the backend API
+- Start the Nginx web server
+- Be available on port 3000
+
+```bash
+# Check frontend logs
+docker logs flighthub-frontend-test
+
+# Test frontend
+curl http://localhost:3000
+```
+
+#### **Step 3: Database Connection Test**
+A test service verifies the RDS connection:
+
+```bash
+# Check database connection test
+docker logs flighthub-test-rds
+```
 
 ### **Database Configuration**
 
@@ -100,20 +141,89 @@ The application includes flight data with the following IATA codes:
 **Montreal (YUL) → Ottawa:**
 - YUL → IVR, XQE, BUW, TAO
 
-### **Test Examples**
+### **Testing the Application**
 
-**Search for flights:**
-- **Departure:** YUL (Montreal)
-- **Arrival:** SSR (Toronto)
-- **Date:** 2026-01-15
-- **Expected:** 9 flights found
+#### **Test 1: Backend API Health Check**
+```bash
+curl http://localhost:8000/api/health
+```
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-09-03T00:59:14.740430Z",
+  "environment": "production",
+  "version": "1.0.0",
+  "service": "FlightHub API"
+}
+```
+
+#### **Test 2: Frontend Access**
+```bash
+curl http://localhost:3000
+```
+**Expected Response:** HTML page with React application
+
+#### **Test 3: Flight Search API**
+```bash
+curl "http://localhost:8000/api/flights/search?departure_airport=YUL&arrival_airport=SSR&date=2026-01-15&per_page=3"
+```
+**Expected Response:** JSON with flight data
+
+#### **Test 4: Web Interface Testing**
+
+1. **Open your browser and go to:** http://localhost:3000
+
+2. **Search for flights:**
+   - **Departure:** YUL (Montreal)
+   - **Arrival:** SSR (Toronto)
+   - **Date:** 2026-01-15
+   - **Expected:** 9 flights found
+
+3. **Test different routes:**
+   - YUL → ADG (Montreal → Toronto)
+   - YUL → CAJ (Montreal → Toronto)
+   - YUL → XRE (Montreal → Toronto)
+
+4. **Test round-trip booking:**
+   - Select "Aller-retour" (Round-trip)
+   - Choose departure and return dates
+   - Select flights for both directions
+
+### **Verification Commands**
+
+#### **Check All Services Status**
+```bash
+# View all running containers
+docker ps
+
+# Check service health
+docker compose ps
+
+# View all logs
+docker compose logs -f
+
+# View specific service logs
+docker compose logs backend
+docker compose logs frontend
+docker compose logs test-rds
+```
+
+#### **Service Health Checks**
+```bash
+# Backend health check
+curl -f http://localhost:8000/api/health || echo "Backend not ready"
+
+# Frontend health check
+curl -f http://localhost:3000 || echo "Frontend not ready"
+
+# Database connection test
+docker logs flighthub-test-rds | grep -i "success\|error\|connected"
+```
 
 ### **Development Commands**
 
 ```bash
-# View logs
-docker compose logs -f
-
 # Stop the application
 docker compose down
 
@@ -125,6 +235,10 @@ docker exec -it flighthub-backend-test bash
 
 # Access frontend container
 docker exec -it flighthub-frontend-test sh
+
+# Restart specific service
+docker compose restart backend
+docker compose restart frontend
 ```
 
 ### **Troubleshooting**
