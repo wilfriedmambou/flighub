@@ -34,6 +34,109 @@ flightHub/
 └── README.md          # Ce fichier
 ```
 
+## 🚀 **Local Installation with Docker Compose**
+
+### **Prerequisites**
+- Docker and Docker Compose installed on your system
+- AWS CLI configured (for ECR access)
+- Environment variables configured (see below)
+
+### **Quick Start**
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/wilfriedmambou/flighub.git
+   cd flighub
+   ```
+
+2. **Configure environment variables:**
+   Create a `.env` file in the root directory with the following variables:
+   ```bash
+   # Database password for RDS connection
+   DB_PASSWORD=your_rds_password_here
+   
+   # AWS credentials (if needed for ECR)
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_DEFAULT_REGION=us-east-1
+   ```
+
+3. **Start the application:**
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. **Access the application:**
+   - **Frontend:** http://localhost:3000
+   - **Backend API:** http://localhost:8000
+   - **API Health Check:** http://localhost:8000/api/health
+
+### **Database Configuration**
+
+The application is **pre-configured** to connect to an **AWS RDS PostgreSQL database**. The connection parameters are already set in the `docker-compose.yml` file:
+
+```yaml
+environment:
+  DB_CONNECTION: pgsql
+  DB_HOST: prod-flighthub-db.cgrc2wska579.us-east-1.rds.amazonaws.com
+  DB_PORT: 5432
+  DB_DATABASE: flighthub_prod
+  DB_USERNAME: flighthub_user
+  DB_PASSWORD: ${DB_PASSWORD}
+```
+
+**Note:** The database connection is already established and contains flight data for testing.
+
+### **Available Flight Routes for Testing**
+
+The application includes flight data with the following IATA codes:
+
+**Montreal (YUL) → Toronto:**
+- YUL → SSR (9 flights per day)
+- YUL → ADG (9 flights per day)
+- YUL → CAJ (9 flights per day)
+- YUL → XRE, YXZ, XXK, USU, VIR, PSE
+
+**Montreal (YUL) → Ottawa:**
+- YUL → IVR, XQE, BUW, TAO
+
+### **Test Examples**
+
+**Search for flights:**
+- **Departure:** YUL (Montreal)
+- **Arrival:** SSR (Toronto)
+- **Date:** 2026-01-15
+- **Expected:** 9 flights found
+
+### **Development Commands**
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop the application
+docker compose down
+
+# Rebuild and restart
+docker compose up --build -d
+
+# Access backend container
+docker exec -it flighthub-backend-test bash
+
+# Access frontend container
+docker exec -it flighthub-frontend-test sh
+```
+
+### **Troubleshooting**
+
+**If you encounter CORS errors:**
+- The frontend is configured to connect to the backend on the same domain
+- CORS is handled by Laravel middleware
+
+**If no flights are found:**
+- Ensure you're using the correct IATA codes (YUL, SSR, ADG, etc.)
+- Check that the date is in 2026 (flight data is available for 2026)
+
 ## 🎯 **Fonctionnalités Principales**
 
 ### **Frontend (React + Vite)**
@@ -159,26 +262,6 @@ GET /api/trips/{id}        - Détails d'un voyage
 POST /api/trips/validate   - Valider un voyage
 ```
 
-## 📖 **Documentation API Interactive**
-
-🚀 **Accédez à la documentation complète et interactive de l'API FlightHub :**
-
-**[🌐 Interface Swagger UI](http://localhost:8000/api/docs)**
-
-### **Fonctionnalités de la documentation :**
-- ✅ **Interface graphique moderne** avec Swagger UI
-- ✅ **Tests en direct** de tous les endpoints
-- ✅ **Schémas de données** détaillés
-- ✅ **Exemples de requêtes** et réponses
-- ✅ **Validation automatique** des paramètres
-- ✅ **Navigation intuitive** par catégories
-
-### **Endpoints documentés :**
-- **Airlines** : Gestion des compagnies aériennes
-- **Airports** : Recherche et gestion des aéroports
-- **Flights** : Recherche avancée de vols
-- **Trips** : Création et gestion des voyages
-
 ## 🎨 **Interface Utilisateur**
 
 ### **Design System**
@@ -259,10 +342,28 @@ Pour toute question ou problème :
 
 *Développé avec ❤️ en utilisant les technologies web modernes*
 
-online version 
-backend swagger Api
 
-http://52.90.108.95:80/api/docs
+<!-- backend API  -->
+http://52.90.108.95/api/docs
 
-frontend entry 
+<!-- frontend  -->
+
 http://52.90.108.95:8080/
+
+
+<!-- Résultat attendu : 9 vols aller + 9 vols retour -->
+
+Départ : YUL
+Arrivée : ADG
+Date aller : 2026-01-20
+Date retour : 2026-01-22
+Type : Aller-retour
+Résultat attendu : 9 vols aller + 9 vols retour
+
+<!-- alle simple ici  -->
+
+Départ : YUL
+Arrivée : SSR
+Date : 2026-01-15
+Type : Aller simple
+Résultat attendu : 9 vols trouvés
