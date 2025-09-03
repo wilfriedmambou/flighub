@@ -327,15 +327,14 @@ composer install
 
 # Configurer la base de données dans .env
 DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
+DB_HOST=prod-flighthub-db.cgrc2wska579.us-east-1.rds.amazonaws.com
 DB_PORT=5432
 DB_DATABASE=flighthub
-DB_USERNAME=postgres
-DB_PASSWORD=votre_mot_de_passe
+DB_USERNAME=flighthub_admin
+DB_PASSWORD=flighthub-prod-2025
 
-# Créer les tables et peupler la base
-php artisan migrate
-php artisan db:seed
+
+
 
 # Démarrer le serveur
 php artisan serve
